@@ -43,9 +43,7 @@
             <version>3.11.5</version>
         </dependency>
 
-
     </dependencies>
-
 
     <build>
         <sourceDirectory>${src.dir}</sourceDirectory>
