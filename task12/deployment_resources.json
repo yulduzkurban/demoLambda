@@ -90,6 +90,7 @@
     "autoscaling": [],
     "tags": {}
   },
+  
   "api-ui-hoster": {
     "resource_type": "s3_bucket",
     "acl": "public-read",
@@ -110,7 +111,7 @@
           "Condition": {
             "IpAddress": {
               "aws:SourceIp": [
-                "18.153.146.156/32"
+                "18.197.177.98/32"
               ]
             }
           }
