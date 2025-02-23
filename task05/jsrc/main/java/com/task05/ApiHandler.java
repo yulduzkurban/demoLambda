@@ -1,101 +1,88 @@
 package com.task05;
 
+import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-//import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-//import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.syndicate.deployment.annotations.environment.EnvironmentVariable;
 import com.syndicate.deployment.annotations.environment.EnvironmentVariables;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
-import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
-import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
-//import org.apache.commons.lang3.RandomStringUtils;
-import java.util.HashMap;
+import com.syndicate.deployment.annotations.events.DynamoDbTriggerEventSource;
+import com.syndicate.deployment.annotations.lambda.LambdaHandler;
+import com.syndicate.deployment.annotations.lambda.LambdaUrlConfig;
+import com.syndicate.deployment.model.RetentionSetting;
+import com.syndicate.deployment.model.lambda.url.AuthType;
+import com.syndicate.deployment.model.lambda.url.InvokeMode;
+
 import java.util.Map;
 import java.util.UUID;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-
-import com.syndicate.deployment.annotations.lambda.LambdaHandler;
-import com.syndicate.deployment.model.RetentionSetting;
 
 @LambdaHandler(
-    lambdaName = "api_handler",
-	roleName = "api_handler-role",
-	isPublishVersion = true,
-	aliasName = "${lambdas_alias_name}",
-	logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
+		lambdaName = "api_handler",
+		roleName = "api_handler-role",
+		aliasName = "${lambdas_alias_name}",
+		isPublishVersion = false,
+		logsExpiration = RetentionSetting.SYNDICATE_ALIASES_SPECIFIED
+)
+@LambdaUrlConfig(
+		authType = AuthType.NONE,
+		invokeMode = InvokeMode.BUFFERED
 )
 @EnvironmentVariables(value = {
 		@EnvironmentVariable(key = "region", value = "${region}"),
-		@EnvironmentVariable(key = "target_table", value = "${target_table}")
-})
-//public class ApiHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
-//public class ApiHandler implements RequestHandler<Request, APIGatewayV2HTTPResponse> {
-public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
+		@EnvironmentVariable(key = "table", value = "${target_table}")
+}
+)
 
-	private static final DynamoDbClient dynamoDb = DynamoDbClient.builder()
-			.region(Region.of(System.getenv("region"))) // Change region if necessary
-			.build();
-	private static final ObjectMapper objectMapper = new ObjectMapper();
+public class ApiHandler implements RequestHandler<Map<String, Object>, Map<String, Object>> {
+	private final DynamoDB dynamoDB;
+	private final Table table;
+	private final ObjectMapper objectMapper;
 
-//	public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent request, Context context) {
-//	public APIGatewayV2HTTPResponse handleRequest(Request request, Context context) {
-	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
-		try {
-			context.getLogger().log("Events table: " + System.getenv("target_table"));
-			context.getLogger().log("Full request: " + request.toString());
-			context.getLogger().log("Request body: " + request.getBody());
-//			Request inputBody = objectMapper.readValue(request.getBody(), Request.class);
-//			Request inputBody = request;
-			Request inputBody = objectMapper.readValue(request.getBody(), Request.class);
-			Integer principalId = inputBody.getPrincipalId();
-			context.getLogger().log("Request principalId: " + principalId);
-			Map<String, String> content = inputBody.getContent();
-			context.getLogger().log("Request content: " + content);
-
-			String uuid = UUID.randomUUID().toString();
-			String createdAt = DateTimeFormatter.ISO_INSTANT.format(ZonedDateTime.now());
-
-			Map<String, AttributeValue> event = new HashMap<>();
-			event.put("id", AttributeValue.builder().s(uuid).build());
-			event.put("principalId", AttributeValue.builder().n(String.valueOf(principalId)).build());
-			event.put("createdAt", AttributeValue.builder().s(createdAt).build());
-			event.put("body", AttributeValue.builder().m(mapStringToAttributeValue(content)).build());
-
-			PutItemRequest putItemRequest = PutItemRequest.builder()
-					.tableName(System.getenv("target_table"))
-					.item(event)
-					.build();
-			dynamoDb.putItem(putItemRequest);
-
-			Map<String, Object> responseBody = new HashMap<>();
-			responseBody.put("id", uuid);
-			responseBody.put("principalId", principalId);
-			responseBody.put("createdAt", createdAt);
-			responseBody.put("body", content);
-
-			APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
-			response.setStatusCode(201);
-			response.setBody(objectMapper.writeValueAsString(responseBody));
-			return response;
-		} catch (Exception e) {
-			context.getLogger().log("Error: " + e.getMessage());
-			APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
-			response.setStatusCode(500);
-			return response;
-		}
+	public ApiHandler() {
+		this.dynamoDB = new DynamoDB(AmazonDynamoDBClientBuilder.defaultClient());
+		this.table = dynamoDB.getTable(System.getenv("table")); // Use environment variable
+		this.objectMapper = new ObjectMapper();
 	}
 
-	private static Map<String, AttributeValue> mapStringToAttributeValue(Map<String, String> map) {
-		Map<String, AttributeValue> attributeValueMap = new HashMap<>();
-		map.forEach((key, value) -> attributeValueMap.put(key, AttributeValue.builder().s(value).build()));
-		return attributeValueMap;
+	public Map<String, Object> handleRequest(Map<String, Object> input, Context context) {
+		try {
+			// Extract request data
+			int principalId = (int) input.get("principalId");
+			Map<String, String> content = (Map<String, String>) input.get("content");
+
+			// Create event data
+			String id = UUID.randomUUID().toString();
+			String createdAt = java.time.Instant.now().toString();
+
+			// Prepare DynamoDB item
+			Item item = new Item()
+					.withPrimaryKey("id", id)
+					.withInt("principalId", principalId)
+					.withString("createdAt", createdAt)
+					.withMap("body", content);
+
+			// Save to DynamoDB
+			table.putItem(item);
+
+			// Prepare response
+			Map<String, Object> response = Map.of(
+					"statusCode", 201,
+					"event", Map.of(
+							"id", id,
+							"principalId", principalId,
+							"createdAt", createdAt,
+							"body", content
+					)
+			);
+
+			return response;
+
+		} catch (Exception e) {
+			context.getLogger().log("Error: " + e.getMessage());
+			return Map.of("statusCode", 500, "error", e.getMessage());
+		}
 	}
 }

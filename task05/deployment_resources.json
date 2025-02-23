@@ -22,8 +22,7 @@
       ],
       "Version": "2012-10-17"
     },
-    "resource_type": "iam_policy",
-    "tags": {}
+    "resource_type": "iam_policy"
   },
   "api_handler-role": {
     "predefined_policies": [],
@@ -31,8 +30,7 @@
     "custom_policies": [
       "lambda-basic-execution"
     ],
-    "resource_type": "iam_role",
-    "tags": {}
+    "resource_type": "iam_role"
   },
   "task5_api": {
     "resource_type": "api_gateway",
@@ -54,19 +52,15 @@
         }
       }
     },
-    "minimum_compression_size": 0,
-    "tags": {}
+    "minimum_compression_size": 0
   },
   "Events": {
     "resource_type": "dynamodb_table",
     "hash_key_name": "id",
-    "hash_key_type": "N",
-    "sort_key_name": "content",
-    "sort_key_type": "S",
+    "hash_key_type": "S",
     "read_capacity": 1,
     "write_capacity": 1,
     "global_indexes": [],
-    "autoscaling": [],
-    "tags": {}
+    "autoscaling": []
   }
 }
