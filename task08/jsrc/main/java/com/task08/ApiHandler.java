@@ -17,7 +17,9 @@ import java.util.Map;
 @LambdaHandler(
 		lambdaName = "api_handler",
 		roleName = "api_handler-role",
-		layers = {"weatherClient"}
+		layers = {"weatherClient"},
+		isPublishVersion = true,
+	    aliasName = "${lambdas_alias_name}"
 )
 @LambdaLayer(
 		layerName = "weatherClient",
