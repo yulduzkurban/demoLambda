@@ -5,6 +5,8 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.syndicate.deployment.annotations.lambda.LambdaHandler;
 import com.syndicate.deployment.annotations.lambda.LambdaLayer;
 import com.syndicate.deployment.annotations.lambda.LambdaUrlConfig;
+import com.syndicate.deployment.model.lambda.url.AuthType;
+import com.syndicate.deployment.model.lambda.url.InvokeMode;
 import com.task08.layer.OpenMeteoClient;
 import org.apache.commons.lang3.StringUtils;
 
@@ -25,7 +27,10 @@ import java.util.Map;
 		layerName = "weatherClient",
 		libraries = {"lib/OpenMeteoClient.jar", "lib/commons-lang3-3.14.0.jar"}
 )
-@LambdaUrlConfig
+@LambdaUrlConfig(
+		authType = AuthType.NONE,
+		invokeMode = InvokeMode.BUFFERED
+)
 public class ApiHandler implements RequestHandler<Object, Map<String, Object>> {
 
 	private static final OpenMeteoClient weatherClient = new OpenMeteoClient();
